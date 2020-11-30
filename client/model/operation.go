@@ -17,8 +17,9 @@ package model
 import "fmt"
 
 type Operation struct {
-	Name string  `json:"name"`
-	Qps  float64 `json:"qps"`
+	Service string  `json:"service"`
+	Name    string  `json:"name"`
+	Qps     float64 `json:"qps"`
 }
 
 func (op Operation) String() string {

@@ -126,18 +126,13 @@ func (s *AdaptiveSampler) Sampler() jaeger.SamplerV2 {
 	return s.sampler
 }
 
-func (s *AdaptiveSampler) setSampler(sampler jaeger.SamplerV2) {
-	s.Lock()
-	defer s.Unlock()
-	s.sampler = sampler
-}
-
 func (s *AdaptiveSampler) UpdateSampler() {
 	s.Lock()
 	defer s.Unlock()
 
 	if len(s.qps) == 0 {
-		// Because there are no operations, updating the sampler is not required.
+		s.sampler = jaeger.NewConstSampler(true)
+		s.logger.Debug("no operations for updating sampler")
 		return
 	}
 
@@ -150,8 +145,9 @@ func (s *AdaptiveSampler) UpdateSampler() {
 			qE.throughput = 0
 		}
 		operations = append(operations, model.Operation{
-			Name: opName,
-			Qps:  qE.qps,
+			Service: s.serviceName,
+			Name:    opName,
+			Qps:     qE.qps,
 		})
 	}
 
