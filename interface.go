@@ -17,10 +17,11 @@ package houyi
 import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"io"
 )
 
 type Factory interface {
-	InitFromViper(*viper.Viper)
+	InitFromViper(*viper.Viper, *zap.Logger)
 	CreateTracer(string) (opentracing.Tracer, io.Closer)
 }
