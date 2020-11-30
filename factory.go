@@ -74,13 +74,13 @@ type tracerFactory struct {
 	udpMaxPacketSize int
 }
 
-func NewFactory(logger *zap.Logger) *tracerFactory {
-	return &tracerFactory{
-		logger: logger,
-	}
+func NewFactory() *tracerFactory {
+	return &tracerFactory{}
 }
 
-func (t *tracerFactory) InitFromViper(v *viper.Viper) {
+func (t *tracerFactory) InitFromViper(v *viper.Viper, logger *zap.Logger) {
+	t.logger = logger
+
 	options := new(Options).InitFromViper(v)
 	t.samplerType = options.SamplerType
 	t.bufferRefreshInterval = options.BufferRefreshInterval
