@@ -158,7 +158,7 @@ func (s *AdaptiveSampler) UpdateSampler() {
 	res, err := s.samplingFetcher.Fetch(s.serviceName, operations, s.samplingRefreshInterval)
 	if err != nil {
 		s.metrics.SamplerQueryFailure.Inc(1)
-		s.logger.Info("failed to fetch sampling strategy",
+		s.logger.Debug("failed to fetch sampling strategy",
 			zap.Error(err),
 			zap.String("response", string(res)))
 		return
@@ -166,7 +166,7 @@ func (s *AdaptiveSampler) UpdateSampler() {
 	strategy, err := s.samplingParser.Parse(res)
 	if err != nil {
 		s.metrics.SamplerUpdateFailure.Inc(1)
-		s.logger.Info("failed to parse sampling strategy response",
+		s.logger.Debug("failed to parse sampling strategy response",
 			zap.Error(err),
 			zap.String("response", string(res)))
 		return
@@ -175,14 +175,24 @@ func (s *AdaptiveSampler) UpdateSampler() {
 	s.metrics.SamplerRetrieved.Inc(1)
 	if err := s.updateSamplerViaUpdaters(strategy); err != nil {
 		s.metrics.SamplerUpdateFailure.Inc(1)
-		s.logger.Info("failed to handle sampling strategy response", zap.Error(err))
+		s.logger.Debug("failed to handle sampling strategy response", zap.Error(err))
 		return
 	}
 
-	if newSampler, ok := s.sampler.(*jaeger.PerOperationSampler); ok {
-		s.logger.Info("Updated sampler", zap.Stringer("new sampler", newSampler))
+	var newSamplerStr string
+	switch s.sampler.(type) {
+	case *jaeger.ProbabilisticSampler:
+		newSamplerStr = s.sampler.(*jaeger.ProbabilisticSampler).String()
+	case *jaeger.RateLimitingSampler:
+		newSamplerStr = s.sampler.(*jaeger.RateLimitingSampler).String()
+	case *jaeger.ConstSampler:
+		newSamplerStr = s.sampler.(*jaeger.ConstSampler).String()
+	case *jaeger.PerOperationSampler:
+		newSamplerStr = s.sampler.(*jaeger.PerOperationSampler).String()
+	default:
+		newSamplerStr = "unknown"
 	}
-
+	s.logger.Debug("Updated sampler", zap.String("sampler", newSamplerStr))
 	s.metrics.SamplerUpdated.Inc(1)
 }
 
