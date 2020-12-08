@@ -58,7 +58,7 @@ func TestDefaultFlags(t *testing.T) {
 }
 
 func TestConstSampler(t *testing.T) {
-	f := NewFactory(logger)
+	f := NewFactory()
 	cmd := &cobra.Command{}
 	flagSet := new(flag.FlagSet)
 	v := viper.New()
@@ -66,7 +66,7 @@ func TestConstSampler(t *testing.T) {
 
 	v.Set(samplerType, SamplerTypeConst)
 	v.Set(alwaysSample, true)
-	f.InitFromViper(v)
+	f.InitFromViper(v, logger)
 
 	tracer, closer := f.CreateTracer(serviceName)
 	_, ok := tracer.(*jaeger.Tracer)
@@ -87,7 +87,7 @@ func TestConstSampler(t *testing.T) {
 }
 
 func TestProbabilitySampler(t *testing.T) {
-	f := NewFactory(logger)
+	f := NewFactory()
 	cmd := &cobra.Command{}
 	flagSet := new(flag.FlagSet)
 	v := viper.New()
@@ -95,7 +95,7 @@ func TestProbabilitySampler(t *testing.T) {
 
 	v.Set(samplerType, SamplerTypeProbability)
 	v.Set(samplingRate, 1)
-	f.InitFromViper(v)
+	f.InitFromViper(v, logger)
 
 	tracer, closer := f.CreateTracer(serviceName)
 	_, ok := tracer.(*jaeger.Tracer)
@@ -112,7 +112,7 @@ func TestProbabilitySampler(t *testing.T) {
 	assert.Nil(t, closer.Close())
 
 	v.Set(samplingRate, 0)
-	f.InitFromViper(v)
+	f.InitFromViper(v, logger)
 	tracer, closer = f.CreateTracer(serviceName)
 	span = tracer.StartSpan(op).(*jaeger.Span)
 	span.Finish()

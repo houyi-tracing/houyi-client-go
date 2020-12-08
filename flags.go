@@ -31,7 +31,7 @@ const (
 	maxTracesPerSecond = "max.traces.per.second"
 	strategyURI        = "strategy.uri"
 
-	DefaultSamplerType        = "adaptive"
+	DefaultSamplerType        = SamplerTypeDynamic
 	DefaultAlwaysSample       = true
 	DefaultSamplingRate       = 1.0
 	DefaultMaxTracesPerSecond = 2000

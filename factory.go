@@ -27,7 +27,7 @@ import (
 
 const (
 	SamplerTypeConst       = "const"
-	SamplerTypeAdaptive    = "adaptive"
+	SamplerTypeDynamic     = "dynamic"
 	SamplerTypeProbability = "probability"
 	SamplerTypeRateLimit   = "rate-limit"
 	SamplerTypeUnknown     = "unknown"
@@ -90,7 +90,7 @@ func (t *tracerFactory) InitFromViper(v *viper.Viper, logger *zap.Logger) {
 		t.samplingRate = options.SamplingRate
 	case SamplerTypeConst:
 		t.alwaysSample = options.AlwaysSample
-	case SamplerTypeAdaptive:
+	case SamplerTypeDynamic:
 		t.refreshInterval = options.RefreshInterval
 		t.strategyURI = options.StrategyURI
 	case SamplerTypeRateLimit:
@@ -102,7 +102,7 @@ func (t *tracerFactory) InitFromViper(v *viper.Viper, logger *zap.Logger) {
 
 	t.reporterType = options.ReporterType
 
-	if t.samplerType == SamplerTypeAdaptive && t.reporterType != ReporterTypeRemote {
+	if t.samplerType == SamplerTypeDynamic && t.reporterType != ReporterTypeRemote {
 		t.logger.Fatal("adaptive sampler must work with remote reporter")
 		return
 	}
@@ -138,7 +138,7 @@ func (t *tracerFactory) createSampler(serviceName string) jaeger.Sampler {
 		}
 	case SamplerTypeConst:
 		sampler = jaeger.NewConstSampler(t.alwaysSample)
-	case SamplerTypeAdaptive:
+	case SamplerTypeDynamic:
 		initSampler := jaeger.NewConstSampler(true)
 		sampler = client.NewAdaptiveSampler(
 			serviceName,
