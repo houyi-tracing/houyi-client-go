@@ -29,14 +29,12 @@ const (
 	samplingRate       = "sampling.rate"
 	refreshInterval    = "refresh.interval"
 	maxTracesPerSecond = "max.traces.per.second"
-	strategyURI        = "strategy.uri"
 
 	DefaultSamplerType        = SamplerTypeDynamic
 	DefaultAlwaysSample       = true
 	DefaultSamplingRate       = 1.0
 	DefaultMaxTracesPerSecond = 2000
-	DefaultRefreshInterval    = time.Minute
-	DefaultStrategyURI        = "/api/strategy"
+	DefaultRefreshInterval    = time.Second * 30
 
 	// reporter
 	reporterType          = "reporter.type"
@@ -106,11 +104,6 @@ func addSamplerFlags(flags *flag.FlagSet) {
 		maxTracesPerSecond,
 		DefaultMaxTracesPerSecond,
 		"Maximum traces per second (rate-limit sampler)")
-
-	flags.String(
-		strategyURI,
-		DefaultStrategyURI,
-		"URI for requesting strategies (without hosts and ports, for example, \"/api/strategy\").(dynamic sampler)")
 }
 
 func addReporterFlags(flags *flag.FlagSet) {
@@ -151,7 +144,6 @@ func (opts *Options) InitFromViper(v *viper.Viper) *Options {
 	opts.AlwaysSample = v.GetBool(alwaysSample)
 	opts.SamplingRate = v.GetFloat64(samplingRate)
 	opts.MaxTracesPerSecond = v.GetFloat64(maxTracesPerSecond)
-	opts.StrategyURI = v.GetString(strategyURI)
 
 	opts.AgentHost = v.GetString(agentHost)
 	opts.AgentGRPCPort = v.GetInt(agentGRPCPort)

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 The Houyi Authors.
+// Copyright (c) 2020 Fuhai Yan.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package houyi
 
-import (
-	"encoding/json"
-	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/thrift-gen/sampling"
-)
+import "fmt"
 
-type samplingStrategyParser struct{}
-
-func NewSamplingStrategyParser() jaeger.SamplingStrategyParser {
-	return &samplingStrategyParser{}
+type Operation struct {
+	Service string  `json:"service"`
+	Name    string  `json:"name"`
+	Qps     float64 `json:"qpsStat"`
 }
 
-func (p *samplingStrategyParser) Parse(response []byte) (interface{}, error) {
-	strategy := new(sampling.SamplingStrategyResponse)
-	if err := json.Unmarshal(response, strategy); err != nil {
-		return nil, err
-	}
-	return strategy, nil
+func (op Operation) String() string {
+	return fmt.Sprintf("[name=%s, qpsStat=%f]", op.Name, op.Qps)
 }

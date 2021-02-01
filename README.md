@@ -7,6 +7,7 @@ Four types of sampler have been support:
 - Const
 - Probability
 - Rate-limit
-- Adaptive (Remote)
+- Adaptive
+- Dynamic
 
 All development works of this project was based on [Jeager](https://github.com/jaegertracing/jaeger).

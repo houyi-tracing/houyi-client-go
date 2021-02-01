@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Fuhai Yan.
+// Copyright (c) 2021 The Houyi Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
-
-import "fmt"
-
-type Operation struct {
-	Service string  `json:"service"`
-	Name    string  `json:"name"`
-	Qps     float64 `json:"qps"`
-}
-
-func (op Operation) String() string {
-	return fmt.Sprintf("[name=%s, qps=%f]", op.Name, op.Qps)
-}
+package houyi

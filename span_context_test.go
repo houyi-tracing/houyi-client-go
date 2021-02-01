@@ -1,4 +1,4 @@
-// Copyright (c) 2020 The Houyi Authors.
+// Copyright (c) 2021 The Houyi Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package houyi
 
 import (
-	"github.com/uber/jaeger-client-go"
+	"fmt"
+	"testing"
 )
 
-type adaptiveSamplerUpdater struct {
-	jaeger.AdaptiveSamplerUpdater
-}
+func TestTraceID(t *testing.T) {
+	ctx := NewSpanContext(
+		TraceID{
+			High: 1,
+			Low:  1,
+		},
+		1,
+		2,
+		true,
+		map[string]string{
+			"baggage-key": "val",
+		})
 
-func NewSamplerUpdater() jaeger.SamplerUpdater {
-	return &adaptiveSamplerUpdater{}
+	fmt.Println(ctx.String())
+	// 0000000000000001:0000000000000001:0000000000000001:0000000000000002:1
+	fmt.Println(fmt.Sprint(ctx.IsSampled()))
 }
