@@ -30,8 +30,8 @@ type samplingStrategyFetcher struct {
 	agentEp      routing.Endpoint
 }
 
-func NewSamplingStrategyFetcher(agentEp routing.Endpoint) SamplingStrategyFetcher {
-	return &samplingStrategyFetcher{agentEp: agentEp}
+func NewSamplingStrategyFetcher(strategyType api_v1.StrategyType, agentEp routing.Endpoint) SamplingStrategyFetcher {
+	return &samplingStrategyFetcher{strategyType: strategyType, agentEp: agentEp}
 }
 
 func (f *samplingStrategyFetcher) Fetch(s string, operations []Operation) (interface{}, error) {

@@ -38,7 +38,7 @@ type Span struct {
 
 	logs []opentracing.LogRecord
 
-	tracer *tracer
+	tracer *houyiTracer
 }
 
 func (s *Span) SpanContext() SpanContext {

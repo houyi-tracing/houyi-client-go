@@ -27,12 +27,21 @@ import (
 	"sync"
 )
 
+// Transport is to provide robust communication with agent for reporter.
 type Transport interface {
+	// Append appends a span into transport but the span would not be reported to agent until
+	// cache is full.
 	Append(span *Span) (int, error)
+
+	// Flush would immediately transport all spans in cache to agent.
 	Flush() (int, error)
+
 	io.Closer
 }
 
+// grpcSender is a transport to report spans to agent in gRPC way.
+// It would cache spans reported by reporter and flush cache at the moment that the length of cached spans exceed
+// maxBufferSize.
 type grpcSender struct {
 	sync.Mutex
 

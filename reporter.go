@@ -26,6 +26,10 @@ type Reporter interface {
 	io.Closer
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// RemoteReporter
+///////////////////////////////////////////////////////////////////////////////
+
 type remoteReporter struct {
 	logger *zap.Logger
 
@@ -97,4 +101,54 @@ func (r *remoteReporter) processQueue() {
 			return
 		}
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Log Reporter
+///////////////////////////////////////////////////////////////////////////////
+
+type logReporter struct {
+	logger *zap.Logger
+}
+
+func NewLogReporter(logger *zap.Logger) Reporter {
+	return &logReporter{logger: logger}
+}
+
+func (r *logReporter) Report(span *Span) {
+	sc := span.context
+	r.logger.Debug("report span",
+		zap.Stringer("trace ID", sc.traceID),
+		zap.Stringer("span ID", sc.spanID),
+		zap.Stringer("parent span ID", sc.parentID),
+		zap.String("operation name", span.operationName),
+		zap.Time("start time", span.startTime),
+		zap.Duration("duration", span.duration),
+		zap.Bool("is ingress", span.isIngress),
+		zap.Any("tags", span.tags),
+		zap.Any("logs", span.logs),
+		zap.Any("references", span.ref))
+}
+
+func (r *logReporter) Close() error {
+	// do nothing
+	return nil
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Null Reporter
+///////////////////////////////////////////////////////////////////////////////
+
+type nullReporter struct{}
+
+func NewNullReporter() Reporter {
+	return &nullReporter{}
+}
+
+func (r *nullReporter) Report(_ *Span) {
+	// do nothing
+}
+
+func (r *nullReporter) Close() error {
+	return nil
 }

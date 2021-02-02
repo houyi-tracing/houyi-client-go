@@ -20,8 +20,6 @@ import (
 	"github.com/uber/jaeger-client-go/utils"
 	"io"
 	"math"
-	"math/rand"
-	"time"
 )
 
 const (
@@ -47,6 +45,7 @@ type Sampler interface {
 	OnCreateSpan(span *Span) SamplingDecision
 	IsSampled(span *Span) (bool, []opentracing.Tag)
 
+	fmt.Stringer
 	io.Closer
 }
 
@@ -81,8 +80,8 @@ func (s *ConstSampler) OnCreateSpan(_ *Span) SamplingDecision {
 	}
 }
 
-func (s *ConstSampler) IsSampled(_ *Span) (bool, []opentracing.Tag) {
-	return s.decision, s.tags
+func (s *ConstSampler) IsSampled(span *Span) (bool, []opentracing.Tag) {
+	return span.context.IsSampled(), span.Tags()
 }
 
 func (s *ConstSampler) Close() error {
@@ -95,19 +94,23 @@ func (s *ConstSampler) String() string {
 
 // -----------------------
 
+const samplingRateMask = ^(uint64(1) << 63)
+
 // ProbabilitySampler
 type ProbabilitySampler struct {
-	samplingRate float64
-	tags         []opentracing.Tag
+	samplingRate     float64
+	samplingBoundary uint64
+	tags             []opentracing.Tag
 }
 
 func NewProbabilitySampler(samplingRate float64) Sampler {
 	return &ProbabilitySampler{
-		samplingRate: samplingRate,
+		samplingRate:     samplingRate,
+		samplingBoundary: uint64(samplingRate * float64(math.MaxUint64&samplingRateMask)),
 		tags: []opentracing.Tag{
 			{
 				Key:   SamplerTypeKey,
-				Value: SamplerTypeConst,
+				Value: SamplerTypeProbability,
 			},
 			{
 				Key:   SamplerParamKey,
@@ -117,17 +120,20 @@ func NewProbabilitySampler(samplingRate float64) Sampler {
 	}
 }
 
-func (s *ProbabilitySampler) OnCreateSpan(_ *Span) SamplingDecision {
-	rand.Seed(time.Now().UnixNano())
+func (s *ProbabilitySampler) OnCreateSpan(span *Span) SamplingDecision {
+	// spanID was generated randomly so that we can use it to make probability sampling.
 	return SamplingDecision{
-		Sampled: rand.Float64() < s.samplingRate,
+		Sampled: uint64(span.context.spanID)&samplingRateMask <= s.samplingBoundary,
 		Tag:     s.tags,
 	}
 }
 
-func (s *ProbabilitySampler) IsSampled(_ *Span) (bool, []opentracing.Tag) {
-	rand.Seed(time.Now().UnixNano())
-	return rand.Float64() < s.samplingRate, s.tags
+func (s *ProbabilitySampler) IsSampled(span *Span) (bool, []opentracing.Tag) {
+	return span.context.IsSampled(), span.Tags()
+}
+
+func (s *ProbabilitySampler) String() string {
+	return fmt.Sprintf("probability_sampler(sampling_rate=%f)", s.samplingRate)
 }
 
 func (s *ProbabilitySampler) Close() error {
@@ -167,8 +173,12 @@ func (s *RateLimitingSampler) OnCreateSpan(_ *Span) SamplingDecision {
 	}
 }
 
-func (s *RateLimitingSampler) IsSampled(_ *Span) (bool, []opentracing.Tag) {
-	return s.rateLimiter.CheckCredit(1.0), s.tags
+func (s *RateLimitingSampler) IsSampled(span *Span) (bool, []opentracing.Tag) {
+	return span.context.IsSampled(), span.Tags()
+}
+
+func (s *RateLimitingSampler) String() string {
+	return fmt.Sprintf("rate_limiting_sampler(max_traces_per_second=%f)", s.maxTracesPerSecond)
 }
 
 func (s *RateLimitingSampler) Close() error {
@@ -196,6 +206,10 @@ func (s *PerOperationSampler) OnCreateSpan(span *Span) SamplingDecision {
 
 func (s *PerOperationSampler) IsSampled(span *Span) (bool, []opentracing.Tag) {
 	return s.sampler.IsSampled(span)
+}
+
+func (s *PerOperationSampler) String() string {
+	return s.sampler.String()
 }
 
 func (s *PerOperationSampler) Close() error {

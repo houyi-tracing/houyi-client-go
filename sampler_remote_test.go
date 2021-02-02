@@ -13,3 +13,69 @@
 // limitations under the License.
 
 package houyi
+
+import (
+	"github.com/houyi-tracing/houyi/pkg/routing"
+	"go.uber.org/zap"
+	"testing"
+	"time"
+)
+
+const serviceName = "houyi-debug"
+
+func TestPullStrategies(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+	sampler := NewRemoteSampler(logger, &RemoteSamplerParams{
+		Logger:       logger,
+		ServiceName:  serviceName,
+		PullInterval: time.Second * 3,
+		Type:         RemoteSampler_Adaptive,
+		AgentEndpoint: routing.Endpoint{
+			Addr: "192.168.31.77",
+			Port: 18760,
+		},
+	})
+	reporter := NewNullReporter()
+	tracer := NewTracer(serviceName, &TracerParams{
+		Logger:   logger,
+		Reporter: reporter,
+		Sampler:  sampler,
+	})
+
+	go func() {
+		for {
+			for i := 0; i < 200; i++ {
+				s := tracer.StartSpan("op1")
+				s.Finish()
+			}
+			time.Sleep(time.Second)
+		}
+	}()
+
+	go func() {
+		for {
+			for i := 0; i < 200; i++ {
+				s := tracer.StartSpan("op2")
+				s.Finish()
+			}
+			time.Sleep(time.Second)
+		}
+	}()
+
+	go func() {
+		for {
+			for i := 0; i < 200; i++ {
+				s := tracer.StartSpan("op3")
+				s.Finish()
+			}
+			time.Sleep(time.Second)
+		}
+	}()
+
+	time.Sleep(time.Minute)
+	_ = sampler.Close()
+}
+
+func TestReportSpans(t *testing.T) {
+
+}

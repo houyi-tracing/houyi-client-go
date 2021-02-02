@@ -31,7 +31,7 @@ type TraceID struct {
 }
 
 func (t TraceID) String() string {
-	return fmt.Sprintf("%016x:%016x", t.Low, t.High)
+	return fmt.Sprintf("%016x:%016x", t.High, t.Low)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,8 +52,14 @@ type SpanContext struct {
 	traceID  TraceID
 	spanID   SpanID
 	parentID SpanID
-	flags    byte
-	baggage  map[string]string
+
+	// flags is used to represent the state of span context.
+	//
+	// The lowest bit of flags is used to represent whether this span is sampled: 1 for sampled, 0 for not sampled.
+	//
+	// Other bits of flags would be used for other purposes in the future.
+	flags   byte
+	baggage map[string]string
 }
 
 var emptyContext SpanContext
@@ -66,7 +72,7 @@ func NewSpanContext(
 	baggage map[string]string) SpanContext {
 	var flags byte
 	if sampled {
-		flags = 1
+		flags = 1 // is sampled
 	} else {
 		flags = 0
 	}
@@ -96,7 +102,7 @@ func (s SpanContext) IsSampled() bool {
 }
 
 func (s SpanContext) String() string {
-	return fmt.Sprintf("%016x:%016x:%016x:%016x:%o:",
+	return fmt.Sprintf("%016x:%016x:%016x:%016x:%o",
 		s.traceID.High, s.traceID.Low, uint64(s.spanID), uint64(s.parentID), s.flags)
 }
 
@@ -120,13 +126,16 @@ var (
 // ContextFromString reconstructs the Context encoded in a string
 func ContextFromString(value string) (SpanContext, error) {
 	var context SpanContext
+
 	if value == "" {
 		return emptyContext, ErrEmptyContextString
 	}
+
 	parts := strings.Split(value, ":")
 	if len(parts) != 5 {
 		return emptyContext, ErrInvalidFormatContext
 	}
+
 	var err error
 	if context.traceID.High, err = HexToUint64(parts[0]); err != nil {
 		return emptyContext, err
@@ -140,12 +149,12 @@ func ContextFromString(value string) (SpanContext, error) {
 	} else {
 		context.spanID = SpanID(sID)
 	}
-
 	if psID, err := HexToUint64(parts[3]); err != nil {
 		return emptyContext, err
 	} else {
 		context.parentID = SpanID(psID)
 	}
+
 	flags, err := strconv.ParseUint(parts[4], 8, 8)
 	if err != nil {
 		return emptyContext, err
@@ -155,7 +164,7 @@ func ContextFromString(value string) (SpanContext, error) {
 	return context, nil
 }
 
-// HexToUint64 converts a hex string to it's actual value of type uint64.
+// HexToUint64 converts a hexadecimal string to it's actual value of type uint64.
 func HexToUint64(value string) (uint64, error) {
 	if len(value) > 16 {
 		return 0, fmt.Errorf("value string can not be longer than 16 hex characters: %s", value)

@@ -39,7 +39,7 @@ type TracerParams struct {
 	Sampler  Sampler
 }
 
-type tracer struct {
+type houyiTracer struct {
 	logger *zap.Logger
 
 	serviceName string
@@ -56,7 +56,7 @@ type tracer struct {
 }
 
 func NewTracer(serviceName string, params *TracerParams) Tracer {
-	t := &tracer{
+	t := &houyiTracer{
 		serviceName: serviceName,
 		logger:      params.Logger,
 		reporter:    params.Reporter,
@@ -75,13 +75,6 @@ func NewTracer(serviceName string, params *TracerParams) Tracer {
 	t.injectors[opentracing.HTTPHeaders] = hdp
 	t.extractors[opentracing.HTTPHeaders] = hdp
 
-	t.tags = make([]opentracing.Tag, 0)
-	t.process = Process{
-		Service: serviceName,
-		UUID:    strconv.FormatUint(t.randomNumber(), 16),
-		Tags:    t.tags,
-	}
-
 	seedGenerator := utils.NewRand(time.Now().UnixNano())
 	pool := sync.Pool{
 		New: func() interface{} {
@@ -94,10 +87,18 @@ func NewTracer(serviceName string, params *TracerParams) Tracer {
 		pool.Put(generator)
 		return number
 	}
+
+	t.tags = make([]opentracing.Tag, 0)
+	t.process = Process{
+		Service: serviceName,
+		UUID:    strconv.FormatUint(t.randomNumber(), 16),
+		Tags:    t.tags,
+	}
+
 	return t
 }
 
-func (t *tracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
+func (t *houyiTracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
 	sso := opentracing.StartSpanOptions{}
 	for _, o := range opts {
 		o.Apply(&sso)
@@ -106,16 +107,16 @@ func (t *tracer) StartSpan(operationName string, opts ...opentracing.StartSpanOp
 }
 
 // startSpanWithOptions is similar with the Jaeger version
-func (t *tracer) startSpanWithOptions(operationName string, options opentracing.StartSpanOptions) opentracing.Span {
+func (t *houyiTracer) startSpanWithOptions(operationName string, options opentracing.StartSpanOptions) opentracing.Span {
 	if options.StartTime.IsZero() {
 		options.StartTime = time.Now()
 	}
 
-	var references []opentracing.SpanReference
 	var parentCtx SpanContext
 	var ctx SpanContext
 	var hasParent bool
 
+	references := make([]opentracing.SpanReference, 0)
 	for _, ref := range options.References {
 		ctxRef, ok := ref.ReferencedContext.(SpanContext)
 		if !ok {
@@ -135,14 +136,17 @@ func (t *tracer) startSpanWithOptions(operationName string, options opentracing.
 	}
 
 	if !hasParent {
-		ctx.traceID.Low = t.randomNumber()
 		ctx.traceID.High = t.randomNumber()
+		ctx.traceID.Low = t.randomNumber()
 		ctx.spanID = SpanID(ctx.traceID.Low)
 		ctx.parentID = 0
+		ctx.baggage = make(map[string]string)
 	} else {
 		ctx.traceID = parentCtx.traceID
 		ctx.spanID = SpanID(t.randomNumber())
 		ctx.parentID = parentCtx.spanID
+		ctx.flags = parentCtx.flags
+		ctx.baggage = parentCtx.baggage
 	}
 
 	sp := &Span{}
@@ -153,26 +157,28 @@ func (t *tracer) startSpanWithOptions(operationName string, options opentracing.
 	sp.duration = 0
 	sp.ref = references
 	sp.isIngress = sp.context.parentID == 0
+	sp.logs = make([]opentracing.LogRecord, 0)
 	sp.tags = make([]opentracing.Tag, 0)
 
 	for key, tag := range options.Tags {
 		sp.SetTag(key, tag)
 	}
 
-	// make sampling decision
-	decision := t.sampler.OnCreateSpan(sp)
-	sp.tags = append(sp.tags, decision.Tag...)
-
-	if decision.Sampled {
-		sp.context.flags = 1
-	} else {
-		sp.context.flags = 0
+	if !hasParent {
+		// make sampling decision
+		decision := t.sampler.OnCreateSpan(sp)
+		sp.tags = append(sp.tags, decision.Tag...)
+		if decision.Sampled {
+			sp.context.flags = 1
+		} else {
+			sp.context.flags = 0
+		}
 	}
 
 	return sp
 }
 
-func (t *tracer) Inject(ctx opentracing.SpanContext, format interface{}, carrier interface{}) error {
+func (t *houyiTracer) Inject(ctx opentracing.SpanContext, format interface{}, carrier interface{}) error {
 	if injector, ok := t.injectors[format]; ok {
 		return injector.Inject(ctx.(SpanContext), carrier)
 	} else {
@@ -180,7 +186,7 @@ func (t *tracer) Inject(ctx opentracing.SpanContext, format interface{}, carrier
 	}
 }
 
-func (t *tracer) Extract(format interface{}, carrier interface{}) (opentracing.SpanContext, error) {
+func (t *houyiTracer) Extract(format interface{}, carrier interface{}) (opentracing.SpanContext, error) {
 	if extractor, ok := t.extractors[format]; ok {
 		return extractor.Extract(carrier)
 	} else {
@@ -188,7 +194,7 @@ func (t *tracer) Extract(format interface{}, carrier interface{}) (opentracing.S
 	}
 }
 
-func (t *tracer) Close() error {
+func (t *houyiTracer) Close() error {
 	if err := t.reporter.Close(); err != nil {
 		return err
 	}
@@ -198,14 +204,14 @@ func (t *tracer) Close() error {
 	return nil
 }
 
-func (t *tracer) Sampler() Sampler {
+func (t *houyiTracer) Sampler() Sampler {
 	return t.sampler
 }
 
-func (t *tracer) Tags() []opentracing.Tag {
+func (t *houyiTracer) Tags() []opentracing.Tag {
 	return t.tags
 }
 
-func (t *tracer) reportSpan(span *Span) {
+func (t *houyiTracer) reportSpan(span *Span) {
 	t.reporter.Report(span)
 }

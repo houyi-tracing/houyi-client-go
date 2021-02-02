@@ -118,7 +118,7 @@ func (p *BinaryPropagator) Inject(ctx SpanContext, carrier interface{}) error {
 		return opentracing.ErrInvalidCarrier
 	}
 
-	// Handle the tracer context
+	// Handle the houyiTracer context
 	if err := binary.Write(writer, binary.BigEndian, ctx.traceID.High); err != nil {
 		return err
 	}
