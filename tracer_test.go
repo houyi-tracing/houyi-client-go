@@ -16,11 +16,13 @@ package houyi
 
 import (
 	"fmt"
+	"github.com/houyi-tracing/houyi/pkg/routing"
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestStartSpan(t *testing.T) {
@@ -53,7 +55,7 @@ func TestStartSpan(t *testing.T) {
 	childSpan.Finish()
 }
 
-func TestPropagation(t *testing.T) {
+func TestHttpHeadersPropagation(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	reporter := NewLogReporter(logger)
 	sampler := NewConstSampler(true)
@@ -78,6 +80,40 @@ func TestPropagation(t *testing.T) {
 
 	fmt.Println(newSc.(SpanContext).String())
 	fmt.Println(sc.String())
+}
+
+func TestTracerReportSpans(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+
+	transport := NewTransport(&TransportParams{
+		Logger:          logger,
+		MaxBufferedSize: 1,
+		AgentEndpoint: routing.Endpoint{
+			Addr: "192.168.31.229",
+			Port: 14680,
+		},
+	})
+	reporter := NewRemoteReporter(&RemoteReporterParams{
+		Logger:    logger,
+		QueueSize: 1,
+		Interval:  time.Second,
+		Transport: transport,
+	})
+
+	sampler := NewConstSampler(true)
+	tracer := NewTracer("svc", &TracerParams{
+		Logger:   logger,
+		Reporter: reporter,
+		Sampler:  sampler,
+	})
+
+	n := 10
+	for i := 0; i < n; i++ {
+		s := tracer.StartSpan("op")
+		s.Finish()
+	}
+
+	time.Sleep(time.Minute)
 }
 
 func BenchmarkStartSpan(b *testing.B) {

@@ -30,6 +30,13 @@ type Reporter interface {
 // RemoteReporter
 ///////////////////////////////////////////////////////////////////////////////
 
+type RemoteReporterParams struct {
+	Logger    *zap.Logger
+	QueueSize int
+	Interval  time.Duration
+	Transport Transport
+}
+
 type remoteReporter struct {
 	logger *zap.Logger
 
@@ -42,13 +49,13 @@ type remoteReporter struct {
 	stopCh chan *sync.WaitGroup
 }
 
-func NewRemoteReporter(logger *zap.Logger, queueSize int, interval time.Duration, transport Transport) Reporter {
+func NewRemoteReporter(params *RemoteReporterParams) Reporter {
 	r := &remoteReporter{
-		logger:        logger,
-		queueSize:     queueSize,
-		flushInterval: interval,
-		transport:     transport,
-		spanCh:        make(chan *Span, queueSize+100),
+		logger:        params.Logger,
+		queueSize:     params.QueueSize,
+		flushInterval: params.Interval,
+		transport:     params.Transport,
+		spanCh:        make(chan *Span, params.QueueSize+100),
 		stopCh:        make(chan *sync.WaitGroup),
 	}
 	go r.processQueue()

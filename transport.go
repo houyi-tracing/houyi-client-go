@@ -22,7 +22,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"io"
 	"sync"
 )
@@ -39,6 +38,12 @@ type Transport interface {
 	io.Closer
 }
 
+type TransportParams struct {
+	Logger          *zap.Logger
+	MaxBufferedSize int
+	AgentEndpoint   routing.Endpoint
+}
+
 // grpcSender is a transport to report spans to agent in gRPC way.
 // It would cache spans reported by reporter and flush cache at the moment that the length of cached spans exceed
 // maxBufferSize.
@@ -49,30 +54,16 @@ type grpcSender struct {
 	maxBufferSize int
 	buffer        []*model.Span
 	agentEp       routing.Endpoint
-	process       *Process
-
-	conn *grpc.ClientConn
-	c    api_v2.CollectorServiceClient
+	process       *model.Process
 }
 
-func NewTransport(logger *zap.Logger, maxBufferSize int, agentEp routing.Endpoint, process *Process) Transport {
+func NewTransport(params *TransportParams) Transport {
 	sender := &grpcSender{
-		logger:        logger,
-		maxBufferSize: maxBufferSize,
-		buffer:        make([]*model.Span, maxBufferSize),
-		agentEp:       agentEp,
-		process:       process,
+		logger:        params.Logger,
+		maxBufferSize: params.MaxBufferedSize,
+		buffer:        make([]*model.Span, 0, params.MaxBufferedSize+100),
+		agentEp:       params.AgentEndpoint,
 	}
-
-	conn, err := grpc.Dial(sender.agentEp.String(), grpc.WithInsecure())
-	if err != nil {
-		logger.Fatal("Failed to dail to gRPC", zap.String("endpoint", agentEp.String()))
-		return nil
-	} else {
-		defer conn.Close()
-		sender.conn = conn
-	}
-	sender.c = api_v2.NewCollectorServiceClient(conn)
 	return sender
 }
 
@@ -80,8 +71,11 @@ func (g *grpcSender) Append(span *Span) (int, error) {
 	g.Lock()
 	defer g.Unlock()
 
+	if g.process == nil {
+		g.process = convertProcess(&span.tracer.process)
+	}
 	jSpan := convertSpan(span, g.process)
-	if len(g.buffer) == g.maxBufferSize {
+	if len(g.buffer) >= g.maxBufferSize {
 		g.buffer = append(g.buffer, jSpan)
 		return g.flush()
 	} else {
@@ -94,42 +88,42 @@ func (g *grpcSender) Flush() (int, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	if g.conn.GetState() == connectivity.Shutdown {
-		conn, err := grpc.Dial(g.agentEp.String(), grpc.WithInsecure())
-		if err != nil {
-			g.logger.Fatal("Connection is closed and transport failed to dail to agent", zap.Error(err))
-			return 0, err
-		}
-		g.conn = conn
-		g.c = api_v2.NewCollectorServiceClient(conn)
-	}
 	return g.flush()
 }
 
 func (g *grpcSender) flush() (int, error) {
-	jProcess := convertProcess(g.process)
 	req := &api_v2.PostSpansRequest{
 		Batch: model.Batch{
 			Spans:   g.buffer,
-			Process: jProcess,
+			Process: g.process,
 		},
 	}
+
+	conn, err := grpc.Dial(g.agentEp.String(), grpc.WithInsecure())
+	if err != nil {
+		return 0, err
+	} else {
+		defer conn.Close()
+	}
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
-	if _, err := g.c.PostSpans(ctx, req); err != nil {
+
+	c := api_v2.NewCollectorServiceClient(conn)
+	if _, err := c.PostSpans(ctx, req); err != nil {
 		return 0, err
 	} else {
 		flushed := len(g.buffer)
+		g.buffer = g.buffer[:0]
 		return flushed, nil
 	}
 }
 
 func (g *grpcSender) Close() error {
-	g.conn.Close()
 	return nil
 }
 
-func convertSpan(span *Span, process *Process) *model.Span {
+func convertSpan(span *Span, process *model.Process) *model.Span {
 	spanCtx := span.SpanContext()
 	traceID := spanCtx.TraceID()
 	spanID := spanCtx.SpanID()
@@ -145,7 +139,7 @@ func convertSpan(span *Span, process *Process) *model.Span {
 		Duration:      span.Duration(),
 		Tags:          convertTags(span.Tags()),
 		Logs:          convertLogs(span.Logs()),
-		Process:       convertProcess(process),
+		Process:       process,
 	}
 }
 
