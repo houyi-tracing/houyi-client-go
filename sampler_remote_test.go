@@ -25,7 +25,7 @@ const serviceName = "houyi-debug"
 
 func TestPullStrategies(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
-	sampler := NewRemoteSampler(logger, &RemoteSamplerParams{
+	sampler := NewRemoteSampler(&RemoteSamplerParams{
 		Logger:       logger,
 		ServiceName:  serviceName,
 		PullInterval: time.Second * 3,

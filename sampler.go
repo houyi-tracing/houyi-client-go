@@ -33,7 +33,6 @@ const (
 	SamplerTypeAdaptive     = "adaptive"
 	SamplerTypeProbability  = "probability"
 	SamplerTypeRateLimiting = "rate-limiting"
-	SamplerTypeUnknown      = "unknown"
 )
 
 type SamplingDecision struct {

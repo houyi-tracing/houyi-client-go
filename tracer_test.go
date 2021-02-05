@@ -20,6 +20,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"math/rand"
 	"net/http"
 	"testing"
 	"time"
@@ -87,29 +88,30 @@ func TestTracerReportSpans(t *testing.T) {
 
 	transport := NewTransport(&TransportParams{
 		Logger:          logger,
-		MaxBufferedSize: 1,
+		MaxBufferedSize: 1000,
 		AgentEndpoint: routing.Endpoint{
-			Addr: "192.168.31.229",
+			Addr: "192.168.31.204",
 			Port: 14680,
 		},
 	})
 	reporter := NewRemoteReporter(&RemoteReporterParams{
 		Logger:    logger,
-		QueueSize: 1,
+		QueueSize: 1000,
 		Interval:  time.Second,
 		Transport: transport,
 	})
 
-	sampler := NewConstSampler(true)
+	sampler := NewProbabilitySampler(0.1)
 	tracer := NewTracer("svc", &TracerParams{
 		Logger:   logger,
 		Reporter: reporter,
 		Sampler:  sampler,
 	})
 
-	n := 10
+	n := 100
 	for i := 0; i < n; i++ {
-		s := tracer.StartSpan("op")
+		s := tracer.StartSpan("houyi_test_op")
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(5)))
 		s.Finish()
 	}
 

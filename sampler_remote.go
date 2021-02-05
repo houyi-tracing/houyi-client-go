@@ -66,9 +66,9 @@ type RemoteSampler struct {
 	stopCh       chan *sync.WaitGroup
 }
 
-func NewRemoteSampler(logger *zap.Logger, params *RemoteSamplerParams) Sampler {
+func NewRemoteSampler(params *RemoteSamplerParams) Sampler {
 	s := &RemoteSampler{
-		logger:       logger,
+		logger:       params.Logger,
 		serviceName:  params.ServiceName,
 		pullInterval: params.PullInterval,
 		strategies:   make(map[string]*PerOperationSampler),

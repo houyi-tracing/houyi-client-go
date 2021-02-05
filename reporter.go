@@ -21,6 +21,12 @@ import (
 	"time"
 )
 
+const (
+	ReporterType_Null    = "null"
+	ReporterType_Logging = "logging"
+	ReporterType_Remote  = "remote"
+)
+
 type Reporter interface {
 	Report(span *Span)
 	io.Closer
@@ -63,12 +69,7 @@ func NewRemoteReporter(params *RemoteReporterParams) Reporter {
 }
 
 func (r *remoteReporter) Report(span *Span) {
-	select {
-	case r.spanCh <- span:
-		// TODO implement metrics
-	default:
-		// do nothing
-	}
+	r.spanCh <- span
 }
 
 func (r *remoteReporter) Close() error {

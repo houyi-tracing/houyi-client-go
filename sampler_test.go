@@ -20,6 +20,7 @@ import (
 	"go.uber.org/zap"
 	"math"
 	"testing"
+	"time"
 )
 
 func TestProbabilitySampler(t *testing.T) {
@@ -35,7 +36,7 @@ func TestProbabilitySampler(t *testing.T) {
 		Sampler:  sampler,
 	})
 
-	times := 100000000
+	times := 50000000
 	cnt := 0
 	for i := 0; i < times; i++ {
 		span := tracer.StartSpan("op").(*Span)
@@ -47,6 +48,55 @@ func TestProbabilitySampler(t *testing.T) {
 	assert.Less(t, math.Abs(float64(cnt)/float64(times)-sr), err)
 }
 
-func TestRandom(t *testing.T) {
-	//fmt.Printf("%x", ^(1 << 63))
+func TestConstSampler(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+	reporter := NewNullReporter()
+	sampler := NewConstSampler(true)
+	tracer := NewTracer("svc", &TracerParams{
+		Logger:   logger,
+		Reporter: reporter,
+		Sampler:  sampler,
+	})
+
+	times := 50000000
+	cnt := 0
+	for i := 0; i < times; i++ {
+		span := tracer.StartSpan("op").(*Span)
+		if span.context.IsSampled() {
+			cnt += 1
+		}
+	}
+	assert.Equal(t, cnt, times)
+}
+
+func TestRateLimitingSampler(t *testing.T) {
+	maxTracesPerSecond := 1000.0
+
+	logger, _ := zap.NewDevelopment()
+	reporter := NewNullReporter()
+	sampler := NewRateLimitingSampler(maxTracesPerSecond)
+	tracer := NewTracer("svc", &TracerParams{
+		Logger:   logger,
+		Reporter: reporter,
+		Sampler:  sampler,
+	})
+
+	times := 50000000
+	cnt := 0
+
+	startTime := time.Now()
+	for i := 0; i < times; i++ {
+		span := tracer.StartSpan("op").(*Span)
+		if span.context.IsSampled() {
+			cnt += 1
+		}
+	}
+	endTime := time.Now()
+
+	seconds := endTime.Sub(startTime).Seconds()
+	fmt.Println("Total: ", times)
+	fmt.Println("Sampled: ", cnt)
+	fmt.Println("Seconds: ", seconds)
+	fmt.Println("Expected Trace Per Second: ", maxTracesPerSecond)
+	fmt.Println("Actual Trace Per Second: ", float64(cnt)/seconds)
 }

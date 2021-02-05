@@ -42,6 +42,8 @@ type TracerParams struct {
 type houyiTracer struct {
 	logger *zap.Logger
 
+	spanAllocator sync.Pool
+
 	serviceName string
 	reporter    Reporter
 	sampler     Sampler
@@ -63,6 +65,11 @@ func NewTracer(serviceName string, params *TracerParams) Tracer {
 		sampler:     params.Sampler,
 		injectors:   make(map[interface{}]Injector),
 		extractors:  make(map[interface{}]Extractor),
+		spanAllocator: sync.Pool{
+			New: func() interface{} {
+				return &Span{}
+			},
+		},
 	}
 
 	bp := &BinaryPropagator{
@@ -149,7 +156,7 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 		ctx.baggage = parentCtx.baggage
 	}
 
-	sp := &Span{}
+	sp := t.spanAllocator.Get().(*Span)
 	sp.context = ctx
 	sp.tracer = t
 	sp.operationName = operationName
@@ -214,4 +221,5 @@ func (t *houyiTracer) Tags() []opentracing.Tag {
 
 func (t *houyiTracer) reportSpan(span *Span) {
 	t.reporter.Report(span)
+	t.spanAllocator.Put(span)
 }

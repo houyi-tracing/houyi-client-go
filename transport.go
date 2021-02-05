@@ -92,6 +92,10 @@ func (g *grpcSender) Flush() (int, error) {
 }
 
 func (g *grpcSender) flush() (int, error) {
+	if len(g.buffer) == 0 {
+		return 0, nil
+	}
+
 	req := &api_v2.PostSpansRequest{
 		Batch: model.Batch{
 			Spans:   g.buffer,

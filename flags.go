@@ -16,15 +16,16 @@ package houyi
 
 import (
 	"flag"
-	"github.com/jaegertracing/jaeger/ports"
-	"github.com/spf13/cobra"
+	"github.com/houyi-tracing/houyi/ports"
 	"github.com/spf13/viper"
 	"time"
 )
 
 const (
 	// sampler
-	samplerType        = "sampler.type"
+	samplerType = "sampler.type"
+
+	// params of samplers
 	alwaysSample       = "always.sample"
 	samplingRate       = "sampling.rate"
 	refreshInterval    = "refresh.interval"
@@ -37,41 +38,38 @@ const (
 	DefaultRefreshInterval    = time.Second * 30
 
 	// reporter
-	reporterType          = "reporter.type"
-	bufferRefreshInterval = "buffer.refresh.interval"
+	reporterType = "reporter.type"
+
+	// params of reporter
 	agentHost             = "agent.host"
-	agentGRPCPort         = "agent.grpc.port"
-	agentHttpPort         = "agent.http.port"
-	udpMaxPacketSize      = "udp.max.packet.size"
+	agentPort             = "agent.port"
+	maxBufferedSize       = "max.buffered.size"
+	bufferRefreshInterval = "buffer.refresh.interval"
+	queueSize             = "reporter.queue.size"
 
 	DefaultReporterType          = "remote"
-	DefaultAgentHost             = "localhost"
-	DefaultAgentGRPCPort         = ports.AgentJaegerThriftCompactUDP
-	DefaultAgentHttpPort         = ports.AgentConfigServerHTTP
-	DefaultBufferRefreshInterval = time.Second * 10
-	DefaultUdpMaxPacketSize      = 65000
+	DefaultAgentAddr             = "localhost"
+	DefaultAgentPort             = ports.AgentGrpcListenPort
+	DefaultBufferRefreshInterval = time.Second * 1
+	DefaultQueueSize             = 100
+	DefaultMaxBufferedSize       = 65000
 )
 
 type Options struct {
+	SamplerType string
+
 	AlwaysSample       bool
-	MaxTracesPerSecond float64
-	RefreshInterval    time.Duration
-	SamplerType        string
 	SamplingRate       float64
-	StrategyURI        string
+	RefreshInterval    time.Duration
+	MaxTracesPerSecond float64
 
-	AgentHost             string
-	AgentGRPCPort         int
-	AgentHttpPort         int
+	ReporterType string
+
+	AgentAddr             string
+	AgentPort             int
 	BufferRefreshInterval time.Duration
-	ReporterType          string
-	UdpMaxPacketSize      int
-}
-
-func AddCmdFlags(v *viper.Viper, cmd *cobra.Command, flagSet *flag.FlagSet) error {
-	AddFlags(flagSet)
-	cmd.Flags().AddGoFlagSet(flagSet)
-	return v.BindPFlags(cmd.Flags())
+	MaxBufferedSize       int
+	QueueSize             int
 }
 
 func AddFlags(flags *flag.FlagSet) {
@@ -83,12 +81,12 @@ func addSamplerFlags(flags *flag.FlagSet) {
 	flags.String(
 		samplerType,
 		DefaultSamplerType,
-		"Sampler type for tracing [const, probability, rate-limit, adaptive]")
+		"Sampler type for tracing. [const, probability, rate-limit, adaptive, dynamic]")
 
 	flags.Duration(
 		refreshInterval,
 		DefaultRefreshInterval,
-		"Refresh interval between requests to pull sampling strategy from jaeger-agent.")
+		"Interval of pulling sampling strategy.")
 
 	flags.Bool(
 		alwaysSample,
@@ -114,28 +112,28 @@ func addReporterFlags(flags *flag.FlagSet) {
 
 	flags.String(
 		agentHost,
-		DefaultAgentHost,
-		"Agent host for pulling sampling strategies (dynamic sampler) and uploading spans (remote reporter)")
+		DefaultAgentAddr,
+		"Agent host for pulling sampling strategies (adaptive/dynamic sampler) and uploading spans (remote reporter)")
 
 	flags.Int(
-		agentGRPCPort,
-		DefaultAgentGRPCPort,
+		agentPort,
+		DefaultAgentPort,
 		"Agent gRPC port for uploading spans (remote reporter)")
 
 	flags.Duration(
 		bufferRefreshInterval,
 		DefaultBufferRefreshInterval,
-		"Buffer refresh interval for upload spans to agent (remote reporter)")
+		"Buffer refresh interval for flush spans to agent (remote reporter)")
 
 	flags.Int(
-		agentHttpPort,
-		DefaultAgentHttpPort,
-		"Agent HTTP port for receiving pulling sampling strategies requests (dynamic sampler & remote reporter)")
+		maxBufferedSize,
+		DefaultMaxBufferedSize,
+		"Maximum buffered size of spans cache. (remote reporter)")
 
 	flags.Int(
-		udpMaxPacketSize,
-		DefaultUdpMaxPacketSize,
-		"Max size of UDP packet to push spans to agent")
+		queueSize,
+		DefaultQueueSize,
+		"Queue size of channel in reporter to cache spans.")
 }
 
 func (opts *Options) InitFromViper(v *viper.Viper) *Options {
@@ -145,10 +143,11 @@ func (opts *Options) InitFromViper(v *viper.Viper) *Options {
 	opts.SamplingRate = v.GetFloat64(samplingRate)
 	opts.MaxTracesPerSecond = v.GetFloat64(maxTracesPerSecond)
 
-	opts.AgentHost = v.GetString(agentHost)
-	opts.AgentGRPCPort = v.GetInt(agentGRPCPort)
-	opts.AgentHttpPort = v.GetInt(agentHttpPort)
-	opts.BufferRefreshInterval = v.GetDuration(bufferRefreshInterval)
 	opts.ReporterType = v.GetString(reporterType)
+	opts.AgentAddr = v.GetString(agentHost)
+	opts.AgentPort = v.GetInt(agentPort)
+	opts.BufferRefreshInterval = v.GetDuration(bufferRefreshInterval)
+	opts.MaxBufferedSize = v.GetInt(maxBufferedSize)
+	opts.QueueSize = v.GetInt(queueSize)
 	return opts
 }
