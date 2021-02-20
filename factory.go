@@ -20,11 +20,12 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"io"
 )
 
 type Factory interface {
 	InitFromViper(*viper.Viper)
-	CreateTracer(serviceName string, logger *zap.Logger) opentracing.Tracer
+	CreateTracer(serviceName string, logger *zap.Logger) (opentracing.Tracer, io.Closer)
 }
 
 type tracerFactory struct {
@@ -39,23 +40,23 @@ func (f *tracerFactory) InitFromViper(v *viper.Viper) {
 	f.Options.InitFromViper(v)
 }
 
-func (f *tracerFactory) CreateTracer(serviceName string, logger *zap.Logger) opentracing.Tracer {
+func (f *tracerFactory) CreateTracer(serviceName string, logger *zap.Logger) (opentracing.Tracer, io.Closer) {
 	sampler, err := f.createSampler(serviceName, logger)
 	if err != nil {
 		logger.Fatal("Failed to create sampler", zap.Error(err))
-		return nil
+		return nil, nil
 	}
 	reporter, err := f.createReporter(logger)
 	if err != nil {
 		logger.Fatal("Failed to create reporter", zap.Error(err))
-		return nil
+		return nil, nil
 	}
 	tracer := NewTracer(serviceName, &TracerParams{
 		Logger:   logger,
 		Reporter: reporter,
 		Sampler:  sampler,
 	})
-	return tracer
+	return tracer, tracer
 }
 
 func (f *tracerFactory) createSampler(serviceName string, logger *zap.Logger) (Sampler, error) {
