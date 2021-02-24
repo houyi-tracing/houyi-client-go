@@ -17,7 +17,6 @@ package houyi
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"github.com/opentracing/opentracing-go"
 	"io"
 	"net/url"
@@ -94,8 +93,6 @@ func (p *HttpHeadersPropagator) Extract(carrier interface{}) (SpanContext, error
 			} else {
 				retCtx.baggage[p.removePrefix(lowerKer)] = safeVal
 			}
-		default:
-			fmt.Println("Unsupported baggage item:", key, val)
 		}
 		return nil
 	})
