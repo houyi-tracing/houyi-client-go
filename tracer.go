@@ -156,6 +156,9 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 		ctx.flags = parentCtx.flags
 		ctx.baggage = parentCtx.baggage
 	}
+	if ctx.baggage == nil {
+		ctx.baggage = make(map[string]string)
+	}
 
 	sp := t.spanAllocator.Get().(*Span)
 	sp.context = ctx
@@ -180,7 +183,7 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 		} else {
 			sp.context.flags = 0
 		}
-	} else {
+	} else if parentCtx.baggage != nil {
 		if v, ok := parentCtx.baggage[BaggageServiceNameKey]; ok {
 			sp.tags = append(sp.tags, opentracing.Tag{
 				Key:   ParentServiceNameTagKey,
@@ -195,8 +198,6 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 				Key:   ParentOperationNameTagKey,
 				Value: v,
 			})
-		} else {
-			fmt.Println("Not found operation name:", parentCtx.baggage)
 		}
 	}
 
