@@ -124,44 +124,43 @@ var (
 )
 
 // ContextFromString reconstructs the Context encoded in a string
-func ContextFromString(value string) (SpanContext, error) {
-	var context SpanContext
-
+func ContextFromString(context *SpanContext, value string) error {
 	if value == "" {
-		return emptyContext, ErrEmptyContextString
+		return ErrEmptyContextString
 	}
 
 	parts := strings.Split(value, ":")
 	if len(parts) != 5 {
-		return emptyContext, ErrInvalidFormatContext
+		return ErrInvalidFormatContext
 	}
 
 	var err error
 	if context.traceID.High, err = HexToUint64(parts[0]); err != nil {
-		return emptyContext, err
+		return err
 	}
 	if context.traceID.Low, err = HexToUint64(parts[1]); err != nil {
-		return emptyContext, err
+		return err
 	}
 
 	if sID, err := HexToUint64(parts[2]); err != nil {
-		return emptyContext, err
+		return err
 	} else {
 		context.spanID = SpanID(sID)
 	}
 	if psID, err := HexToUint64(parts[3]); err != nil {
-		return emptyContext, err
+		return err
 	} else {
 		context.parentID = SpanID(psID)
 	}
 
 	flags, err := strconv.ParseUint(parts[4], 8, 8)
 	if err != nil {
-		return emptyContext, err
+		return err
 	} else {
 		context.flags = byte(flags)
 	}
-	return context, nil
+
+	return nil
 }
 
 // HexToUint64 converts a hexadecimal string to it's actual value of type uint64.

@@ -21,12 +21,6 @@ import (
 	"time"
 )
 
-const (
-	ReporterType_Null    = "null"
-	ReporterType_Logging = "logging"
-	ReporterType_Remote  = "remote"
-)
-
 type Reporter interface {
 	Report(span *Span)
 	io.Closer

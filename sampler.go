@@ -22,19 +22,6 @@ import (
 	"math"
 )
 
-const (
-	SamplerTypeKey  = "sampler.type"
-	SamplerParamKey = "sampler.param"
-)
-
-const (
-	SamplerTypeConst        = "const"
-	SamplerTypeDynamic      = "dynamic"
-	SamplerTypeAdaptive     = "adaptive"
-	SamplerTypeProbability  = "probability"
-	SamplerTypeRateLimiting = "rate-limiting"
-)
-
 type SamplingDecision struct {
 	Sampled bool
 	Tag     []opentracing.Tag

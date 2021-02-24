@@ -16,43 +16,8 @@ package houyi
 
 import (
 	"flag"
-	"github.com/houyi-tracing/houyi/ports"
 	"github.com/spf13/viper"
 	"time"
-)
-
-const (
-	// sampler
-	samplerType = "sampler.type"
-
-	// params of samplers
-	alwaysSample       = "always.sample"
-	samplingRate       = "sampling.rate"
-	refreshInterval    = "refresh.interval"
-	maxTracesPerSecond = "max.traces.per.second"
-
-	DefaultSamplerType        = SamplerTypeDynamic
-	DefaultAlwaysSample       = true
-	DefaultSamplingRate       = 1.0
-	DefaultMaxTracesPerSecond = 2000
-	DefaultRefreshInterval    = time.Second * 30
-
-	// reporter
-	reporterType = "reporter.type"
-
-	// params of reporter
-	agentHost             = "agent.host"
-	agentPort             = "agent.port"
-	maxBufferedSize       = "max.buffered.size"
-	bufferRefreshInterval = "buffer.refresh.interval"
-	queueSize             = "reporter.queue.size"
-
-	DefaultReporterType          = "remote"
-	DefaultAgentAddr             = "localhost"
-	DefaultAgentPort             = ports.AgentGrpcListenPort
-	DefaultBufferRefreshInterval = time.Second * 1
-	DefaultQueueSize             = 100
-	DefaultMaxBufferedSize       = 65000
 )
 
 type Options struct {

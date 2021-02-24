@@ -15,6 +15,7 @@
 package houyi
 
 import (
+	"fmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go/utils"
 	"go.uber.org/zap"
@@ -142,12 +143,12 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 		}
 	}
 
+	ctx.baggage = make(map[string]string)
 	if !hasParent {
 		ctx.traceID.High = t.randomNumber()
 		ctx.traceID.Low = t.randomNumber()
 		ctx.spanID = SpanID(ctx.traceID.Low)
 		ctx.parentID = 0
-		ctx.baggage = make(map[string]string)
 	} else {
 		ctx.traceID = parentCtx.traceID
 		ctx.spanID = SpanID(t.randomNumber())
@@ -166,7 +167,6 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 	sp.isIngress = sp.context.parentID == 0
 	sp.logs = make([]opentracing.LogRecord, 0)
 	sp.tags = make([]opentracing.Tag, 0)
-
 	for key, tag := range options.Tags {
 		sp.SetTag(key, tag)
 	}
@@ -180,7 +180,28 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 		} else {
 			sp.context.flags = 0
 		}
+	} else {
+		if v, ok := parentCtx.baggage[BaggageServiceNameKey]; ok {
+			sp.tags = append(sp.tags, opentracing.Tag{
+				Key:   ParentServiceNameTagKey,
+				Value: v,
+			})
+		} else {
+			fmt.Println("Not found service name: ", parentCtx.baggage)
+		}
+
+		if v, ok := parentCtx.baggage[BaggageOperationNameKey]; ok {
+			sp.tags = append(sp.tags, opentracing.Tag{
+				Key:   ParentOperationNameTagKey,
+				Value: v,
+			})
+		} else {
+			fmt.Println("Not found operation name:", parentCtx.baggage)
+		}
 	}
+
+	sp.context.baggage[BaggageServiceNameKey] = t.serviceName
+	sp.context.baggage[BaggageOperationNameKey] = operationName
 
 	return sp
 }

@@ -17,6 +17,7 @@ package houyi
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/opentracing/opentracing-go"
 	"io"
 	"net/url"
@@ -51,11 +52,6 @@ type Extractor interface {
 	Extract(carrier interface{}) (SpanContext, error)
 }
 
-const (
-	TraceContextHeaderName   = "houyi-ctx"
-	TraceBaggageHeaderPrefix = "houyi-"
-)
-
 type HttpHeadersPropagator struct{}
 
 func (p *HttpHeadersPropagator) Inject(ctx SpanContext, carrier interface{}) error {
@@ -86,14 +82,16 @@ func (p *HttpHeadersPropagator) Extract(carrier interface{}) (SpanContext, error
 		switch {
 		case lowerKer == TraceContextHeaderName:
 			var err error
-			if retCtx, err = ContextFromString(val); err != nil {
+			if err = ContextFromString(&retCtx, val); err != nil {
 				return err
 			}
 		case strings.HasPrefix(lowerKer, TraceBaggageHeaderPrefix):
 			if retCtx.baggage == nil {
 				retCtx.baggage = make(map[string]string)
 			}
-			retCtx.baggage[lowerKer] = url.QueryEscape(val)
+			retCtx.baggage[p.removePrefix(lowerKer)] = url.QueryEscape(val)
+		default:
+			fmt.Println("Unsupported baggage item:", key, val)
 		}
 		return nil
 	})
@@ -105,7 +103,12 @@ func (p *HttpHeadersPropagator) Extract(carrier interface{}) (SpanContext, error
 	if retCtx.traceID.Low == 0 || retCtx.traceID.High == 0 || retCtx.spanID == 0 {
 		return emptyContext, opentracing.ErrSpanContextNotFound
 	}
+
 	return retCtx, nil
+}
+
+func (p *HttpHeadersPropagator) removePrefix(key string) string {
+	return key[len(TraceBaggageHeaderPrefix):]
 }
 
 type BinaryPropagator struct {

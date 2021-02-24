@@ -133,3 +133,40 @@ func BenchmarkStartSpan(b *testing.B) {
 		tracer.StartSpan("op")
 	}
 }
+
+func TestExtractCallerReceiverRelationship(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+
+	reporter := NewLogReporter(logger)
+	sampler := NewConstSampler(true)
+	tracer := NewTracer("svc", &TracerParams{
+		Logger:   logger,
+		Reporter: reporter,
+		Sampler:  sampler,
+	})
+
+	var err error
+
+	sp0 := tracer.StartSpan("op-a")
+	defer sp0.Finish()
+
+	headers := http.Header{}
+	carrier := opentracing.HTTPHeadersCarrier(headers)
+	err = tracer.Inject(sp0.Context(), opentracing.HTTPHeaders, carrier)
+	assert.Nil(t, err)
+	ctx, err := tracer.Extract(opentracing.HTTPHeaders, carrier)
+	assert.Nil(t, err)
+
+	sp1 := tracer.StartSpan("op-b", opentracing.ChildOf(ctx))
+	defer sp1.Finish()
+
+	headers = http.Header{}
+	carrier = opentracing.HTTPHeadersCarrier(headers)
+	err = tracer.Inject(sp1.Context(), opentracing.HTTPHeaders, carrier)
+	assert.Nil(t, err)
+	ctx, err = tracer.Extract(opentracing.HTTPHeaders, carrier)
+	assert.Nil(t, err)
+
+	sp2 := tracer.StartSpan("op-c", opentracing.ChildOf(ctx))
+	defer sp2.Finish()
+}
