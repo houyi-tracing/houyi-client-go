@@ -89,7 +89,11 @@ func (p *HttpHeadersPropagator) Extract(carrier interface{}) (SpanContext, error
 			if retCtx.baggage == nil {
 				retCtx.baggage = make(map[string]string)
 			}
-			retCtx.baggage[p.removePrefix(lowerKer)] = url.QueryEscape(val)
+			if safeVal, err := url.QueryUnescape(val); err != nil {
+				return err
+			} else {
+				retCtx.baggage[p.removePrefix(lowerKer)] = safeVal
+			}
 		default:
 			fmt.Println("Unsupported baggage item:", key, val)
 		}
