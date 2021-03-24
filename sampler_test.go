@@ -16,6 +16,8 @@ package houyi
 
 import (
 	"fmt"
+	"github.com/houyi-tracing/houyi/pkg/routing"
+	"github.com/houyi-tracing/houyi/ports"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"math"
@@ -99,4 +101,30 @@ func TestRateLimitingSampler(t *testing.T) {
 	fmt.Println("Seconds: ", seconds)
 	fmt.Println("Expected Trace Per Second: ", maxTracesPerSecond)
 	fmt.Println("Actual Trace Per Second: ", float64(cnt)/seconds)
+}
+
+func TestPullSamplingStrategies(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+	reporter := NewNullReporter()
+	sampler := NewRemoteSampler(&RemoteSamplerParams{
+		Logger:       logger,
+		ServiceName:  serviceName,
+		PullInterval: time.Second * 5,
+		Type:         RemoteSampler_Dynamic,
+		AgentEndpoint: routing.Endpoint{
+			Addr: "192.168.31.77",
+			Port: ports.AgentGrpcListenPort,
+		},
+	})
+	tracer := NewTracer("svc", &TracerParams{
+		Logger:   logger,
+		Reporter: reporter,
+		Sampler:  sampler,
+	})
+
+	span := tracer.StartSpan("op")
+	time.Sleep(time.Second)
+	span.Finish()
+
+	time.Sleep(time.Minute)
 }
