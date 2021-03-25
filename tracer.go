@@ -137,8 +137,8 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 			ReferencedContext: ctxRef,
 		})
 
-		if !hasParent && (ref.Type == opentracing.ChildOfRef || ref.Type == opentracing.FollowsFromRef) {
-			hasParent = true
+		if !hasParent {
+			hasParent = ref.Type == opentracing.ChildOfRef
 			parentCtx = ctxRef
 		}
 	}
