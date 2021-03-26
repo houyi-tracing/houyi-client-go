@@ -16,6 +16,7 @@ package houyi
 
 import (
 	"github.com/houyi-tracing/houyi/pkg/routing"
+	"github.com/houyi-tracing/houyi/ports"
 	"go.uber.org/zap"
 	"testing"
 	"time"
@@ -29,51 +30,22 @@ func TestPullStrategies(t *testing.T) {
 		Logger:       logger,
 		ServiceName:  serviceName,
 		PullInterval: time.Second * 3,
-		Type:         RemoteSampler_Adaptive,
 		AgentEndpoint: routing.Endpoint{
-			Addr: "192.168.31.77",
-			Port: 18760,
+			Addr: "localhost",
+			Port: ports.AgentGrpcListenPort,
 		},
 	})
-	reporter := NewNullReporter()
+	reporter := NewLogReporter(logger)
+
 	tracer := NewTracer(serviceName, &TracerParams{
 		Logger:   logger,
 		Reporter: reporter,
 		Sampler:  sampler,
 	})
 
-	go func() {
-		for {
-			for i := 0; i < 200; i++ {
-				s := tracer.StartSpan("op1")
-				s.Finish()
-			}
-			time.Sleep(time.Second)
-		}
-	}()
+	tracer.StartSpan("op")
 
-	go func() {
-		for {
-			for i := 0; i < 200; i++ {
-				s := tracer.StartSpan("op2")
-				s.Finish()
-			}
-			time.Sleep(time.Second)
-		}
-	}()
-
-	go func() {
-		for {
-			for i := 0; i < 200; i++ {
-				s := tracer.StartSpan("op3")
-				s.Finish()
-			}
-			time.Sleep(time.Second)
-		}
-	}()
-
-	time.Sleep(time.Minute)
-	_ = sampler.Close()
+	time.Sleep(time.Hour)
 }
 
 func TestReportSpans(t *testing.T) {

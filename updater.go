@@ -20,82 +20,37 @@ import (
 )
 
 type SamplerUpdater interface {
-	Update(sampler Sampler, strategies interface{}) (Sampler, error)
+	Update(sampler *RemoteSampler, strategies *api_v1.StrategiesResponse) error
 }
 
-type adaptiveSamplerUpdater struct{}
+type samplerUpdater struct{}
 
-func NewAdaptiveSamplerUpdater() SamplerUpdater {
-	return &adaptiveSamplerUpdater{}
+func NewSamplerUpdater() SamplerUpdater {
+	return &samplerUpdater{}
 }
 
-func (s *adaptiveSamplerUpdater) Update(sampler Sampler, strategies interface{}) (Sampler, error) {
-	toUpdateSampler, ok := sampler.(*RemoteSampler)
-	if !ok {
-		return sampler, fmt.Errorf("sample must be type of RemoteSampler")
-	}
-
-	if resp, ok := strategies.(*api_v1.StrategyResponse); ok {
-		if resp.GetStrategyType() != api_v1.StrategyType_ADAPTIVE {
-			return sampler, fmt.Errorf("unmatched startegy type")
+func (s *samplerUpdater) Update(sampler *RemoteSampler, resp *api_v1.StrategiesResponse) error {
+	for _, strategy := range resp.GetStrategies() {
+		var newSampler Sampler
+		switch strategy.GetType() {
+		case api_v1.Type_CONST:
+			newSampler = NewConstSampler(strategy.GetConst().GetAlwaysSample())
+		case api_v1.Type_PROBABILITY:
+			newSampler = NewProbabilitySampler(strategy.GetProbability().GetSamplingRate())
+		case api_v1.Type_RATE_LIMITING:
+			newSampler = NewRateLimitingSampler(float64(strategy.GetRateLimiting().GetMaxTracesPerSecond()))
+		case api_v1.Type_ADAPTIVE:
+			newSampler = NewAdaptiveSampler(strategy.GetAdaptive().GetSamplingRate())
+		case api_v1.Type_DYNAMIC:
+			newSampler = NewDynamicSampler(strategy.GetDynamic().GetSamplingRate())
+		default:
+			return fmt.Errorf("invalid sampler type")
 		}
-		if adaptive := resp.GetAdaptive(); adaptive != nil {
-			for _, strategy := range adaptive.GetStrategies() {
-				op, s := strategy.GetOperation(), strategy.GetStrategy()
-				toUpdateSampler.strategies[op] =
-					NewPerOperationSampler(op, NewProbabilitySampler(s.GetSamplingRate())).(*PerOperationSampler)
-			}
-			return toUpdateSampler, nil
-		} else {
-			return sampler, fmt.Errorf("received nil adpative sampler")
+		sampler.strategies[strategy.GetOperation()] = &PerOperationSampler{
+			strategy.GetOperation(),
+			newSampler,
 		}
-	} else {
-		return sampler, fmt.Errorf("invalid type of strateigies")
+
 	}
-}
-
-type dynamicSamplerUpdater struct{}
-
-func NewDynamicSamplerUpdater() SamplerUpdater {
-	return &dynamicSamplerUpdater{}
-}
-
-func (s *dynamicSamplerUpdater) Update(sampler Sampler, strategies interface{}) (Sampler, error) {
-	toUpdateSampler, ok := sampler.(*RemoteSampler)
-	if !ok {
-		return sampler, fmt.Errorf("sample must be type of RemoteSampler")
-	}
-
-	if resp, ok := strategies.(*api_v1.StrategyResponse); ok {
-		if resp.GetStrategyType() != api_v1.StrategyType_DYNAMIC {
-			return sampler, fmt.Errorf("unmatched startegy type")
-		}
-		if dynamic := resp.GetDynamic(); dynamic != nil {
-			for _, strategy := range dynamic.GetStrategies() {
-				op := strategy.GetOperation()
-				switch strategy.GetStrategyType() {
-				case api_v1.StrategyType_CONST:
-					toUpdateSampler.strategies[op] = &PerOperationSampler{
-						operation: op,
-						sampler:   NewConstSampler(strategy.GetConst().Sample),
-					}
-				case api_v1.StrategyType_PROBABILITY:
-					toUpdateSampler.strategies[op] = &PerOperationSampler{
-						operation: op,
-						sampler:   NewProbabilitySampler(strategy.GetProbability().GetSamplingRate()),
-					}
-				case api_v1.StrategyType_RATE_LIMITING:
-					toUpdateSampler.strategies[op] = &PerOperationSampler{
-						operation: op,
-						sampler:   NewRateLimitingSampler(float64(strategy.GetRateLimiting().GetMaxTracesPerSecond())),
-					}
-				}
-			}
-			return toUpdateSampler, nil
-		} else {
-			return sampler, fmt.Errorf("received nil dynamic sampler")
-		}
-	} else {
-		return sampler, fmt.Errorf("invalid type of strateigies")
-	}
+	return nil
 }

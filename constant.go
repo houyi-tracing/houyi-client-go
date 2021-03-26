@@ -22,19 +22,7 @@ import (
 // flags.go
 const (
 	// sampler
-	samplerType = "sampler.type"
-
-	// params of samplers
-	alwaysSample       = "always.sample"
-	samplingRate       = "sampling.rate"
-	refreshInterval    = "refresh.interval"
-	maxTracesPerSecond = "max.traces.per.second"
-
-	DefaultSamplerType        = SamplerTypeDynamic
-	DefaultAlwaysSample       = true
-	DefaultSamplingRate       = 1.0
-	DefaultMaxTracesPerSecond = 2000
-	DefaultRefreshInterval    = time.Second * 30
+	pullStrategiesInterval = "sampling.pull.interval"
 
 	// reporter
 	reporterType = "reporter.type"
@@ -46,12 +34,13 @@ const (
 	bufferRefreshInterval = "buffer.refresh.interval"
 	queueSize             = "reporter.queue.size"
 
-	DefaultReporterType          = "remote"
-	DefaultAgentAddr             = "localhost"
-	DefaultAgentPort             = ports.AgentGrpcListenPort
-	DefaultBufferRefreshInterval = time.Second * 1
-	DefaultQueueSize             = 100
-	DefaultMaxBufferedSize       = 65000
+	DefaultPullStrategiesInterval = time.Second * 10
+	DefaultReporterType           = "remote"
+	DefaultAgentAddr              = "localhost"
+	DefaultAgentPort              = ports.AgentGrpcListenPort
+	DefaultBufferRefreshInterval  = time.Second * 1
+	DefaultQueueSize              = 100
+	DefaultMaxBufferedSize        = 65000
 )
 
 // reporter.go

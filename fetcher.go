@@ -22,19 +22,18 @@ import (
 )
 
 type SamplingStrategyFetcher interface {
-	Fetch(service string, operations []Operation) (interface{}, error)
+	Fetch(service string, operations []Operation) (*api_v1.StrategiesResponse, error)
 }
 
 type samplingStrategyFetcher struct {
-	strategyType api_v1.StrategyType
-	agentEp      routing.Endpoint
+	agentEp routing.Endpoint
 }
 
-func NewSamplingStrategyFetcher(strategyType api_v1.StrategyType, agentEp routing.Endpoint) SamplingStrategyFetcher {
-	return &samplingStrategyFetcher{strategyType: strategyType, agentEp: agentEp}
+func NewSamplingStrategyFetcher(agentEp routing.Endpoint) SamplingStrategyFetcher {
+	return &samplingStrategyFetcher{agentEp: agentEp}
 }
 
-func (f *samplingStrategyFetcher) Fetch(s string, operations []Operation) (interface{}, error) {
+func (f *samplingStrategyFetcher) Fetch(s string, operations []Operation) (*api_v1.StrategiesResponse, error) {
 	conn, err := grpc.Dial(f.agentEp.String(), grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -44,11 +43,10 @@ func (f *samplingStrategyFetcher) Fetch(s string, operations []Operation) (inter
 
 	c := api_v1.NewStrategyManagerClient(conn)
 	req := &api_v1.StrategyRequest{
-		StrategyType: f.strategyType,
-		Service:      s,
-		Operations:   convertOperations(operations),
+		Service:    s,
+		Operations: convertOperations(operations),
 	}
-	return c.GetStrategy(context.TODO(), req)
+	return c.GetStrategies(context.TODO(), req)
 }
 
 func convertOperations(ops []Operation) []*api_v1.StrategyRequest_Operation {

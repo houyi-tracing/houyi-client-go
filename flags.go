@@ -21,93 +21,54 @@ import (
 )
 
 type Options struct {
-	SamplerType string
-
-	AlwaysSample       bool
-	SamplingRate       float64
-	RefreshInterval    time.Duration
-	MaxTracesPerSecond float64
-
-	ReporterType string
-
-	AgentAddr             string
-	AgentPort             int
-	BufferRefreshInterval time.Duration
-	MaxBufferedSize       int
-	QueueSize             int
+	PullStrategiesInterval time.Duration
+	ReporterType           string
+	AgentAddr              string
+	AgentPort              int
+	BufferRefreshInterval  time.Duration
+	MaxBufferedSize        int
+	QueueSize              int
 }
 
 func AddFlags(flags *flag.FlagSet) {
-	addSamplerFlags(flags)
-	addReporterFlags(flags)
-}
-
-func addSamplerFlags(flags *flag.FlagSet) {
-	flags.String(
-		samplerType,
-		DefaultSamplerType,
-		"Sampler type for tracing. [const, probability, rate-limit, adaptive, dynamic]")
-
 	flags.Duration(
-		refreshInterval,
-		DefaultRefreshInterval,
-		"Interval of pulling sampling strategy.")
+		pullStrategiesInterval,
+		DefaultPullStrategiesInterval,
+		"[Houyi Tracing] Interval for pulling strategies.")
 
-	flags.Bool(
-		alwaysSample,
-		DefaultAlwaysSample,
-		"Always sample or not (const sampler)")
-
-	flags.Float64(
-		samplingRate,
-		DefaultSamplingRate,
-		"Sampling rate (probability sampler)")
-
-	flags.Float64(
-		maxTracesPerSecond,
-		DefaultMaxTracesPerSecond,
-		"Maximum traces per second (rate-limit sampler)")
-}
-
-func addReporterFlags(flags *flag.FlagSet) {
 	flags.String(
 		reporterType,
 		DefaultReporterType,
-		"Type of reporter [null, logging, remote]")
+		"[Houyi Tracing] Type of reporter [null, logging, remote]")
 
 	flags.String(
 		agentHost,
 		DefaultAgentAddr,
-		"Agent host for pulling sampling strategies (adaptive/dynamic sampler) and uploading spans (remote reporter)")
+		"[Houyi Tracing] Agent host for pulling sampling strategies (adaptive/dynamic sampler) and uploading spans (remote reporter)")
 
 	flags.Int(
 		agentPort,
 		DefaultAgentPort,
-		"Agent gRPC port for uploading spans (remote reporter)")
+		"[Houyi Tracing] Agent gRPC port for uploading spans (remote reporter)")
 
 	flags.Duration(
 		bufferRefreshInterval,
 		DefaultBufferRefreshInterval,
-		"Buffer refresh interval for flush spans to agent (remote reporter)")
+		"[Houyi Tracing] Buffer refresh interval for flush spans to agent (remote reporter)")
 
 	flags.Int(
 		maxBufferedSize,
 		DefaultMaxBufferedSize,
-		"Maximum buffered size of spans cache. (remote reporter)")
+		"[Houyi Tracing] Maximum buffered size of spans cache. (remote reporter)")
 
 	flags.Int(
 		queueSize,
 		DefaultQueueSize,
-		"Queue size of channel in reporter to cache spans.")
+		"[Houyi Tracing] Queue size of channel in reporter to cache spans.")
 }
 
 func (opts *Options) InitFromViper(v *viper.Viper) *Options {
-	opts.SamplerType = v.GetString(samplerType)
-	opts.RefreshInterval = v.GetDuration(refreshInterval)
-	opts.AlwaysSample = v.GetBool(alwaysSample)
-	opts.SamplingRate = v.GetFloat64(samplingRate)
-	opts.MaxTracesPerSecond = v.GetFloat64(maxTracesPerSecond)
-
+	opts.PullStrategiesInterval = v.GetDuration(pullStrategiesInterval)
 	opts.ReporterType = v.GetString(reporterType)
 	opts.AgentAddr = v.GetString(agentHost)
 	opts.AgentPort = v.GetInt(agentPort)

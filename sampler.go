@@ -179,13 +179,6 @@ type PerOperationSampler struct {
 	sampler   Sampler
 }
 
-func NewPerOperationSampler(operation string, sampler Sampler) Sampler {
-	return &PerOperationSampler{
-		operation: operation,
-		sampler:   sampler,
-	}
-}
-
 func (s *PerOperationSampler) OnCreateSpan(span *Span) SamplingDecision {
 	return s.sampler.OnCreateSpan(span)
 }
@@ -200,4 +193,62 @@ func (s *PerOperationSampler) String() string {
 
 func (s *PerOperationSampler) Close() error {
 	return s.sampler.Close()
+}
+
+// -----------------------
+
+type AdaptiveSampler struct {
+	ProbabilitySampler
+}
+
+func NewAdaptiveSampler(samplingRate float64) Sampler {
+	return &AdaptiveSampler{
+		ProbabilitySampler{
+			samplingRate:     samplingRate,
+			samplingBoundary: uint64(samplingRate * float64(math.MaxUint64&samplingRateMask)),
+			tags: []opentracing.Tag{
+				{
+					Key:   SamplerTypeKey,
+					Value: SamplerTypeAdaptive,
+				},
+				{
+					Key:   SamplerParamKey,
+					Value: samplingRate,
+				},
+			},
+		},
+	}
+}
+
+func (s *AdaptiveSampler) OnCreateSpan(span *Span) SamplingDecision {
+	return s.ProbabilitySampler.OnCreateSpan(span)
+}
+
+// -----------------------
+
+type DynamicSampler struct {
+	ProbabilitySampler
+}
+
+func NewDynamicSampler(samplingRate float64) Sampler {
+	return &DynamicSampler{
+		ProbabilitySampler{
+			samplingRate:     samplingRate,
+			samplingBoundary: uint64(samplingRate * float64(math.MaxUint64&samplingRateMask)),
+			tags: []opentracing.Tag{
+				{
+					Key:   SamplerTypeKey,
+					Value: SamplerTypeDynamic,
+				},
+				{
+					Key:   SamplerParamKey,
+					Value: samplingRate,
+				},
+			},
+		},
+	}
+}
+
+func (s *DynamicSampler) OnCreateSpan(span *Span) SamplingDecision {
+	return s.ProbabilitySampler.OnCreateSpan(span)
 }

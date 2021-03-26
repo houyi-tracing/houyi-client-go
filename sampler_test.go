@@ -110,7 +110,6 @@ func TestPullSamplingStrategies(t *testing.T) {
 		Logger:       logger,
 		ServiceName:  serviceName,
 		PullInterval: time.Second * 5,
-		Type:         RemoteSampler_Dynamic,
 		AgentEndpoint: routing.Endpoint{
 			Addr: "192.168.31.77",
 			Port: ports.AgentGrpcListenPort,

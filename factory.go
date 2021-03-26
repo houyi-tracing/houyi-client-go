@@ -41,11 +41,7 @@ func (f *tracerFactory) InitFromViper(v *viper.Viper) {
 }
 
 func (f *tracerFactory) CreateTracer(serviceName string, logger *zap.Logger) (opentracing.Tracer, io.Closer) {
-	sampler, err := f.createSampler(serviceName, logger)
-	if err != nil {
-		logger.Fatal("Failed to create sampler", zap.Error(err))
-		return nil, nil
-	}
+	sampler := f.createSampler(serviceName, logger)
 	reporter, err := f.createReporter(logger)
 	if err != nil {
 		logger.Fatal("Failed to create reporter", zap.Error(err))
@@ -59,39 +55,16 @@ func (f *tracerFactory) CreateTracer(serviceName string, logger *zap.Logger) (op
 	return tracer, tracer
 }
 
-func (f *tracerFactory) createSampler(serviceName string, logger *zap.Logger) (Sampler, error) {
-	switch f.SamplerType {
-	case SamplerTypeConst:
-		return NewConstSampler(f.AlwaysSample), nil
-	case SamplerTypeProbability:
-		return NewProbabilitySampler(f.SamplingRate), nil
-	case SamplerTypeRateLimiting:
-		return NewRateLimitingSampler(f.MaxTracesPerSecond), nil
-	case SamplerTypeAdaptive:
-		return NewRemoteSampler(&RemoteSamplerParams{
-			Logger:       logger,
-			ServiceName:  serviceName,
-			PullInterval: f.RefreshInterval,
-			Type:         RemoteSampler_Adaptive,
-			AgentEndpoint: routing.Endpoint{
-				Addr: f.AgentAddr,
-				Port: f.AgentPort,
-			},
-		}), nil
-	case SamplerTypeDynamic:
-		return NewRemoteSampler(&RemoteSamplerParams{
-			Logger:       logger,
-			ServiceName:  serviceName,
-			PullInterval: f.RefreshInterval,
-			Type:         RemoteSampler_Dynamic,
-			AgentEndpoint: routing.Endpoint{
-				Addr: f.AgentAddr,
-				Port: f.AgentPort,
-			},
-		}), nil
-	default:
-		return nil, fmt.Errorf("unsupportted type of sampler: %s", f.SamplerType)
-	}
+func (f *tracerFactory) createSampler(serviceName string, logger *zap.Logger) Sampler {
+	return NewRemoteSampler(&RemoteSamplerParams{
+		Logger:       logger,
+		ServiceName:  serviceName,
+		PullInterval: f.PullStrategiesInterval,
+		AgentEndpoint: routing.Endpoint{
+			Addr: f.AgentAddr,
+			Port: f.AgentPort,
+		},
+	})
 }
 
 func (f *tracerFactory) createReporter(logger *zap.Logger) (Reporter, error) {
