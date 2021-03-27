@@ -174,9 +174,10 @@ func (t *houyiTracer) startSpanWithOptions(operationName string, options opentra
 		sp.SetTag(key, tag)
 	}
 
+	// making sampling decision for every span due to calculate QPS
+	decision := t.sampler.OnCreateSpan(sp)
+
 	if !hasParent {
-		// make sampling decision
-		decision := t.sampler.OnCreateSpan(sp)
 		sp.tags = append(sp.tags, decision.Tag...)
 		if decision.Sampled {
 			sp.context.flags = 1
