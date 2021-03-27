@@ -138,6 +138,10 @@ func (s *RemoteSampler) update() {
 		item.Since = now
 	}
 
+	if len(operations) == 0 {
+		s.logger.Debug("skip for update sampler because of no operations exist")
+	}
+
 	strategyResp, err := s.fetcher.Fetch(s.serviceName, operations)
 	if err != nil {
 		s.logger.Error("failed to fetch strategy", zap.Error(err))
