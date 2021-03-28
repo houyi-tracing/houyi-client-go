@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"github.com/houyi-tracing/houyi/idl/api_v1"
 	"go.uber.org/zap"
+	"os"
+	"time"
 )
 
 type SamplerUpdater interface {
@@ -48,7 +50,14 @@ func (s *samplerUpdater) Update(sampler *RemoteSampler, resp *api_v1.StrategiesR
 			newSampler = NewAdaptiveSampler(strategy.GetAdaptive().GetSamplingRate())
 		case api_v1.Type_DYNAMIC:
 			sr := strategy.GetDynamic().GetSamplingRate()
-			s.logger.Info("Updated to dynamic sampler", zap.Float64("sampling rate", sr))
+
+			fileName := fmt.Sprintf("%s_%s.record", strategy.GetService(), strategy.GetOperation())
+			if f, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND, 0755); err == nil {
+				_, _ = f.WriteString(fmt.Sprintf("%s\t%f\n", time.Now().Format(time.RFC3339), sr))
+				_ = f.Close()
+			}
+
+			s.logger.Debug("Updated to dynamic sampler", zap.Float64("sampling rate", sr))
 			newSampler = NewDynamicSampler(sr)
 		default:
 			return fmt.Errorf("invalid sampler type")

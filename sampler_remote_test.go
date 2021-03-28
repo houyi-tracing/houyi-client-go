@@ -15,9 +15,12 @@
 package houyi
 
 import (
+	"fmt"
 	"github.com/houyi-tracing/houyi/pkg/routing"
 	"github.com/houyi-tracing/houyi/ports"
 	"go.uber.org/zap"
+	"math/rand"
+	"os"
 	"testing"
 	"time"
 )
@@ -48,6 +51,12 @@ func TestPullStrategies(t *testing.T) {
 	time.Sleep(time.Hour)
 }
 
-func TestReportSpans(t *testing.T) {
-
+func TestWriteToLocal(t *testing.T) {
+	fileName := "sampling_rate.record"
+	for i := 0; i < 100; i++ {
+		if f, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND, 0755); err == nil {
+			_, _ = f.WriteString(fmt.Sprintf("%s\t%f\n", time.Now().Format(time.RFC3339), rand.Float64()))
+			_ = f.Close()
+		}
+	}
 }
