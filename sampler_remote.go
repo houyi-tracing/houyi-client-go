@@ -52,7 +52,7 @@ func NewRemoteSampler(params *RemoteSamplerParams) Sampler {
 		strategies:   make(map[string]*PerOperationSampler),
 		qpsStat:      make(map[string]*Throughput),
 		stopCh:       make(chan *sync.WaitGroup),
-		updater:      NewSamplerUpdater(),
+		updater:      NewSamplerUpdater(params.Logger),
 		fetcher:      NewSamplingStrategyFetcher(params.AgentEndpoint),
 	}
 	go s.timer()
