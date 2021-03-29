@@ -57,7 +57,10 @@ func (s *samplerUpdater) Update(sampler *RemoteSampler, resp *api_v1.StrategiesR
 				_ = f.Close()
 			}
 
-			s.logger.Debug("Updated to dynamic sampler", zap.Float64("sampling rate", sr))
+			s.logger.Debug("Updated to dynamic sampler",
+				zap.String("service", strategy.Service),
+				zap.String("operation", strategy.Operation),
+				zap.Float64("sampling rate", sr))
 			newSampler = NewDynamicSampler(sr)
 		default:
 			return fmt.Errorf("invalid sampler type")
